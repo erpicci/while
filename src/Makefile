@@ -1,74 +1,55 @@
 ########################################################################
-## While Language Abstract Interpretation - Makefile
-########################################################################
+# While - An abstract interpreter for the While language
+# Marco Zanella <marco.zanella.9@studenti.unipd.it>
+# Static Analysis and Verification of Software
 
 ########################################################################
-## Configuration section.
-CC   = gcc
-CPPC = g++
-LD   = g++
-LEX  = flex
-YACC = bison
-OPT  = -O3
-OPTSTRICT = $(OPT) -Wall -Wextra -pedantic
+# Configuration.
+CPPC  = g++
+COPT  = -Wall -Wextra -pedantic -c
+LD    = g++
+LDOPT = -Wall -Wextra -pedantic
+LEX   = flex
+YACC  = bison
+DOC   = ../doc
 
 
 ########################################################################
-## Dependecnies.
+# Dependencies.
 all: while
-
-while: scanner.o parser.o wrapper.o main.o
-
-main.o:    main.cpp
-scanner.o: scanner.l parser.o
-parser.o:  parser.y
-wrapper.o: wrapper.cpp
-
-
-.PHONY: clean document backup
-
+while: domains/BlackHole.o domains/Sign.o domains/Interval.o \
+       parser/parser.o scanner/scanner.o AST.o main.o
+parser/parser.cpp: parser/grammar.y
+scanner/scanner.cpp: scanner/scanner.l
+.PHONY: clean doc
 
 
 ########################################################################
-## Receipes.
+# Recipes.
+scanner/scanner.cpp:
+	@echo "Generating source code for the lexer..."
+	@${LEX} -o $@ $<
+
+parser/parser.cpp:
+	@echo "Generating source code for the parser..."
+	@${YACC} -d -o $@ $<
+
+%.o: %.cpp
+	@echo "Compiling $@ module..."
+	@${CPPC} ${COPT} -o $@ $<
+
 while:
-	@echo "Generating while interpreter..."
-	@$(LD) $(OPTSTRICT) -o while scanner.o parser.o wrapper.o main.o
+	@echo "Linkning object modules together..."
+	@${LD} ${LDOPT} -o $@ $^
 	@echo "Done."
-	
-scanner.o:
-	@echo "Generating lexical analyzer from (f)lex file..."
-	@$(LEX) -o scanner.c scanner.l
-	@$(CPPC) $(OPTSTRICT) -c -o scanner.o scanner.c
-	@rm -f scanner.c
-
-parser.o:
-	@echo "Generating syntactic analyzer from grammar file..."
-	@$(YACC) -d -o parser.cc parser.y
-	@$(CPPC) $(OPTSTRICT) -c -o parser.o parser.cc
-	@rm -f parser.cc
-
-wrapper.o:
-	@$(CPPC) $(OPTSTRICT) -c -o wrapper.o wrapper.cpp
-
-main.o:
-	@echo "Generating main core..."
-	@$(CPPC) $(OPTSTRICT) -c -o main.o main.cpp
-
-
 
 clean:
-	@echo "Cleanup..."
-	@rm -f *.o *.dot *.png parser.hh
+	@echo "Cleaning up..."
+	@rm -f *.o
+	@rm -f domains/*.o
+	@rm -f scanner/*.o
+	@rm -f parser/*.o
 
-
-document:
-	@echo "Generating documentation..."
-	@doxygen ../doc/Doxyfile
-
-
-backup:
-	@echo "Creating a backup file."
-	@rm -f ../source_backup.zip
-	@zip -r ../source_backup.zip ./*
-
+doc:
+	@echo "Generating documentation" 
+	@doxygen ${DOC}/Doxyfile
