@@ -14,6 +14,7 @@ MAKEOPT = --no-print-directory
 ########################################################################
 # Dependencies.
 all: ${SRC}/${PROJ}
+install: ${SRC}/${PROJ}
 .PHONY: clean doc
 
 
@@ -24,7 +25,8 @@ ${SRC}/${PROJ}:
 
 install:
 	@echo "Installing under ${BIN}..."
-	@mv ${SRC}/${PROJ} ${BIN}
+	@mkdir -p ${BIN}
+	@mv ${SRC}/${PROJ} ${BIN}/${PROJ}
 
 doc:
 	@make doc ${MAKEOPT} -C ${SRC}
