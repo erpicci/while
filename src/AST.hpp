@@ -1,686 +1,435 @@
-/** Template for a ternary abstract syntax tree.
+/** Abstract syntax tree.
+ * Class handling an abstract syntax tree, built by the parser. Such a
+ * tree can be traversed to perform an abstract interpretation.
  * 
- * Class template to handle ternary trees, to be used for the
- * abstract interpreter for the While language.
- * 
- * @file AST.h
+ * @file AST.hpp
  * @author Marco Zanella <marco.zanella.9@studenti.unipd.it>
- * @version 0.9
- * @date 09/03/2014
  */
+#ifndef _AST_HPP_
+#define _AST_HPP_
 
+#include <vector>
+#include <string>
 
-#ifndef _AST_H_
-#define _AST_H_
+#include "AbstractState.hpp"
 
-/* Header file inclusion. */
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <iostream>
-#include <fstream>
-
-#include "AbstractState.h"
-
-
-/* Namespaces. */
 using namespace std;
 
 
-
-/** Template used to represent a ternary tree.
- * Trees are ternary beacuse the maximum number of non terminals in a
- * production of the While language is three, hence the maximum number
- * of sons a tree can have is limited to three. Having such a (low)
- * upper bound makes reasonable the idea to allocate, for each node, an
- * array of three elements on the stack, in order to simplify the memory
- * management and avoid dynamic memory operation.
- * The type of the tree is parametric, and it represent the abstract
- * domain.
- */
+/** Class representing an abstract syntax tree. */
 class AST
 {
-public:
-  /** Type of node. */
+  public:
+  /** Type representing a statement. */
   typedef enum{
-    ASN,       /**< Assignment statement. */
-    SKP,       /**< Skip statement. */
-    CAT,       /**< Concatenation statement. */
-    IF,        /**< If-then-else statement. */
-    WHL,       /**< While statement. */
-    NUM,       /**< Numeric constant. */
-    VAR,       /**< Variable. */
-    AOP,       /**< Arithmetic binary operation. */
-    BOOL,      /**< Boolean constant. */
-    NOT,       /**< Boolean negation. */
-    BOP,       /**< Boolean binary operation. */
-    CMP,       /**< Arithmetic binary comparison. */
-    PRN        /**< Print statement. */
-  } node_type;
+    Asn,           ///< 'Assignment' statement
+    Skp,           ///< 'Skip' statement
+    Seq,           ///< 'Sequential composition' statement
+    If,            ///< 'If-then-else' branch statement
+    Whl,           ///< 'While' loop statement
+    Prn,           ///< 'Print' statement
+    In             ///< 'Input' statement
+  } StmType;
   
-  /** Type of an arithmetic binary operator. */
+  
+  /** Type representing an arithmetic expression. */
   typedef enum{
-    SUM,       /**< Arithmetic sum. */
-    DIF,       /**< Arithmetic difference. */
-    MUL,       /**< Arithmetic product. */
-    DIV,       /**< Integer division. */
-    REM,       /**< Rest of the integer divisio. */
-    POW        /**< Integer power. */
-  } a_opcode;
+    Num,           ///< Constant, integer value
+    Var,           ///< Variable, identifier
+    Id,            ///< Identity (i.e. +a)
+    Opp,           ///< Opposite (i.e. -a)
+    Sum,           ///< Sum
+    Sub,           ///< Subtraction
+    Mul,           ///< Multiplication
+    Div,           ///< Integer division
+    Rem,           ///< Rest of the integer division
+    Pow            ///< Raise to the power
+  } AExpType;
   
-  /** Type of a boolean binary operator. */
+  
+  /** Type representing a boolean expresson or comparison. */
   typedef enum{
-    AND,       /**< Boolean 'and' operator. */
-    OR,        /**< Boolean 'or' operator. */
-    XOR,       /**< Boolean 'exclusive or' operator. */
-    NAND,      /**< Boolean 'not and' operator. */
-    NOR,       /**< Boolean 'nor or' operator. */
-    NXOR       /**< Boolean 'not exclusive or' operator. */
-  } b_opcode;
-  
-  /** Type of a binary comparison operator. */
-  typedef enum{
-    LT,        /**< 'Less than' binary comparison operator. */
-    LEQ,       /**< 'Less or equal' binary comparison operator. */
-    EQ,        /**< 'Equal to' binary comparison operator. */
-    GEQ,       /**< 'Greater or equal' binary comparison operator. */
-    GT,        /**< 'Greater than' binary comparison operator. */
-    NEQ        /**< 'Not equal' binary comparison operator. */
-  } c_opcode;
+    Bool,          ///< Constant, boolean value
+    Not,           ///< Logical negation
+    And,           ///< Logical conjunction
+    Or,            ///< Logical disjunction
+    Xor,           ///< Logical exclusive disjunction
+    Nand,          ///< Negated conjunction
+    Nor,           ///< Negated disjunction
+    Xnor,          ///< Negated exclusive disjunction
+    Lt,            ///< 'Less than' comparison
+    Leq,           ///< 'Less than or equal to' comparison
+    Eq,            ///< 'Equal to' comparison
+    Geq,           ///< 'Greater than or equal to' comparison
+    Gt,            ///< 'Greater than' comparison
+    Neq            ///< 'Not equal to' comparison
+  } BExpType;
   
   
-  
-  /** Constructor.
-   * A node is created storing informations about its type. This
-   * constructor can be used for the 'skip' instruction.
-   * @param[in]  type        Type of the node
-   * @return     A new node
+  /** Constructor of a 0-ary statement abstract syntax node.
+   * 0-ary statements are: skip (Skp).
+   * @param[in]  type        Type of the statement
    */
-  AST(node_type type)
+  AST(StmType type);
+  
+  
+  /** Constructor of a unary statement abstract syntax node.
+   * Unary statements are: print (Prn), input (In).
+   * @param[in]  type        Type of the stament
+   * @param[in]  first       Subtree representing the argument
+   */
+  AST(StmType type, AST *first);
+  
+  
+  /** Constructor of a binary statement abstract syntax node.
+   * Binary statements are: assignment (Asn), sequential composition
+   * (Seq), while loop (Whl).
+   * @param[in]  type        Type of the statement
+   * @param[in]  first       Subtree representing the first argument
+   * @param[in]  second      Subtree representing the second argument
+   */
+  AST(StmType type, AST *first, AST *second);
+  
+  
+  /** Constructor of a ternary statement abstract syntax node.
+   * Ternary statements are: if-then-else branch (If).
+   * @param[in]  type        Type of the statement
+   * @param[in]  first       Subtree representing the first argument
+   * @param[in]  second      Subtree representing the second argument
+   * @param[in]  third       Subtree representing the third argument
+   */
+  AST(StmType type, AST *first, AST *second, AST *third);
+  
+  
+  /** Constructor of a numeric constant abstract syntax node.
+   * Numeric constant expressions are: num (Num).
+   * @param[in]  type        Type of the arithmetic expression
+   * @param[in]  num         Constant, integer value
+   */
+  AST(AExpType type, int num);
+  
+  
+  /** Constructor of a variable synatax node.
+   * Varibales are: var (Var).
+   * @param[in]  type        Type of the arithmetic expression
+   * @param[in]  var         Name of the variable
+   */
+  AST(AExpType type, string var);
+  
+  
+  /** Constructor of an unary arithmetic expression abstract syntax node.
+   * Unary arithmetic expressions are: identity (Id), opposite (Opp).
+   * @param[in]  type        Type of the arithmetic expression
+   * @param[in]  a           Operand
+   */
+  AST(AExpType type, AST *a);
+  
+  
+  /** Constructor of a binary arithmetic expression abstract syntax node.
+   * Binary arithmetic expressions are: sum (Sum), subtraction (Sub),
+   * multiplication (Mul), integer division (Div), remainder of the
+   * integer division (Rem), raise to the power (Pow).
+   * @param[in]  type        Type of the arithmetic expression
+   * @param[in]  a1          First operand
+   * @param[in]  a2          Second operand
+   */
+  AST(AExpType type, AST *a1, AST *a2);
+  
+  
+  /** Constructor of a constant, boolean value.
+   * Constant, boolean values are: boolean (Bool).
+   * @param[in]  type        Type of the boolean value
+   * @param[in]  boolean     Boolean value
+   */
+  AST(BExpType type, bool boolean);
+  
+  
+  /** Constructor of a unary boolean expression abstract syntax node.
+   * Unary boolean expressions are: logical negation (Not).
+   * @param[in]  type        Type of the boolean expression
+   * @param[in]  b           Operand
+   */
+  AST(BExpType type, AST *b);
+  
+  
+  /** Constructor of a binary boolean expression abstract syntax node.
+   * Binary boolean expressions are: logical conjunction (And), logical
+   * disjunction (Or), logical exclusive disjunction (Xor), negated
+   * conjunction (Nand), negated disjunction (Nor), negated exclusive
+   * disjunction (Xnor), 'less than' comparison (Lt), 'less than or
+   * equal to' comparison, 'equal to' comparison, 'greater than or equal
+   * to' comparison, 'greater than' comparison, 'not equal to' comparison.
+   * @param[in]  type        Type of the boolean expression
+   * @param[in]  b1          First operand
+   * @param[in]  b2          Second operand
+   */
+  AST(BExpType type, AST *b1, AST *b2);
+  
+  
+  /** Destructor of an abstract syntax tree. */
+  ~AST();
+  
+  
+  /** A textual representation of the node is provided.
+   * @retval     string      String representing the node
+   */
+  string toString();
+  
+  
+  /** Abstract syntax tree is exported to graphviz.
+   * The abstract syntax tree rooted in the current node is esported
+   * into a file which can later be compiled using graphviz.
+   * @param[in]  filename    Path to the output file
+   */
+  void toGraphviz(const char *filename);
+  
+  
+  /** Abstract syntax tree is interpreted from the bottom state.
+   * Type of (abstract) interpretation is parametric.
+   * @retval     AbstractState Final state
+   */
+  template <typename D>
+  AbstractState<D> interpret()
   {
-    this->type = type;
-    this->sons = 0;
+    return interpret(AbstractState<D>());
   }
   
   
-  /** Constructor.
-   * A node is created storing informations about its type and a
-   * literal. This constructor can be used for variable names and
-   * boolean constants
-   * @param[in]  type        Type of the node
-   * @param[in]  literal     Textual information associated to the node
-   * @return     A new node
+  /** Abstract syntax tree is interpreted in the given state.
+   * Type of (abstract) interpretation is parametric.
+   * @param[in]  state       Initial state
+   * @retval     AbstractState Final state
    */
-  AST(node_type type, const char literal[])
+  template <typename D>
+  AbstractState<D> interpret(AbstractState<D> state)
   {
-    this->type = type;
-    strcpy(this->literal, literal);
-    this->sons = 0;
-  }
-  
-  
-  /** Constructor.
-   * A node is created storing informations about its type value. This
-   * constructor can be used for numeric constants.
-   * @param[in]  type        Type of the node
-   * @param[in]  value       Value associated to the node
-   * @return     A new node
-   */
-  AST(node_type type, int value)
-  {
-    this->type = type;
-    this->value = value;
-    this->sons = 0;
-  }
-  
-  
-  /** Constructor.
-   * A node representing an unary operator is created storing
-   * informations about its type and its operand. This constructor can
-   * be used for unary constructs: 'not' and 'print'.
-   * @param[in]  type        Type of the node
-   * @param[in]  operand     Operand for this unary operator
-   * @return     A new node
-   */
-  AST(node_type type, AST *operand)
-  {
-    this->type = type;
-    this->subtrees[0] = operand;
-    this->sons = 1;
-  }
-  
-  
-  /** Constructor.
-   * A node representing a binary operator is created storing
-   * informations about its type, operands and operator. This
-   * constructor can be used for arithmetic binary operations: sum,
-   * difference, product, division, rest of division, power.
-   * @param[in]  type        Type of the node
-   * @param[in]  op          Opcode representing a binary operator
-   * @param[in]  first_op    First operand for this binary operator
-   * @param[in]  second_op   Second operand for this binary operator
-   * @return     A new node
-   */
-  AST(node_type type, a_opcode op, AST *first_op, AST *second_op)
-  {
-    this->type = type;
-    this->a_op = op;
-    this->subtrees[0] = first_op;
-    this->subtrees[1] = second_op;
-    this->sons = 2;
-  }
-  
-  
-  /** Constructor.
-   * A node representing a binary operator is created storing
-   * informations about its type, operands and operator. This
-   * constructor can be used for boolean binary operations: and, or,
-   * exclusive or, not and, not or, not exclusive or.
-   * @param[in]  type        Type of the node
-   * @param[in]  op          Opcode representing a binary operator
-   * @param[in]  first_op    First operand for this binary operator
-   * @param[in]  second_op   Second operand for this binary operator
-   * @return     A new node
-   */
-  AST(node_type type, b_opcode op, AST *first_op, AST *second_op)
-  {
-    this->type = type;
-    this->b_op = op;
-    this->subtrees[0] = first_op;
-    this->subtrees[1] = second_op;
-    this->sons = 2;
-  }
-  
-  
-  /** Constructor.
-   * A node representing a binary operator is created storing
-   * informations about its type, operands and operator. This
-   * constructor can be used for binary comparisons: less than, less or
-   * equal, equal, greater or equal, greater than, not equal.
-   * @param[in]  type        Type of the node
-   * @param[in]  op          Opcode representing a binary operator
-   * @param[in]  first_op    First operand for this binary operator
-   * @param[in]  second_op   Second operand for this binary operator
-   * @return     A new node
-   */
-  AST(node_type type, c_opcode op, AST *first_op, AST *second_op)
-  {
-    this->type = type;
-    this->c_op = op;
-    this->subtrees[0] = first_op;
-    this->subtrees[1] = second_op;
-    this->sons = 2;
-  }
-  
-  
-  /** Constructor.
-   * A node representing a binary operator is created storing
-   * informations about its type and operands. This constructor can be
-   * used for binary constructs: concatenation and while.
-   * @param[in]  type        Type of the node
-   * @param[in]  first_op    First operand for this binary operator
-   * @param[in]  second_op   Second operand for this binary operator
-   * @return     A new node
-   */
-  AST(node_type type, AST *first_op, AST *second_op)
-  {
-    this->type = type;
-    this->subtrees[0] = first_op;
-    this->subtrees[1] = second_op;
-    this->sons = 2;
-  }
-  
-  
-  /** Constructor.
-   * A node representing a ternary operator is created storing
-   * informations about its type and operands. This constructor can be
-   * used for the ternary construct if-then-else.
-   * @param[in]  type        Type of the node
-   * @param[in]  first_op    First operand for this ternary operator
-   * @param[in]  second_op   Second operand for this ternary operator
-   * @param[in]  third_op    Third operand for this ternary operator
-   * @return     A new node
-   */
-  AST(node_type type, AST *first_op, AST *second_op, AST *third_op)
-  {
-    this->type = type;
-    this->subtrees[0] = first_op;
-    this->subtrees[1] = second_op;
-    this->subtrees[2] = third_op;
-    this->sons = 3;
-  }
-  
-  
-  
-  /** Number of nodes in the subtree is returned.
-   * The number of nodes in the subtree rooted in the current node is
-   * returned, including the root node itself.
-   * @return     Number of nodes in the subtree
-   */
-  unsigned int nodes(void)
-  {
-    unsigned int nodes, i;
+    AbstractState<D> s;
     
-    nodes = 1;
-    for(i = 0; i < this->sons; i++){
-      nodes += this->subtrees[i]->nodes();
-    }
+    // If node is not a statement, just return the current state.
+    if(type != Stm){ return state; }
     
-    return nodes;
-  }
-  
-  
-  
-  /** Number of edges is the subtree is returned.
-   * The number of edges in the subtree rooted in the current node is
-   * returned.
-   * @return     Number of edges in the subtree
-   */
-  inline unsigned int edges(void)
-  {
-    return this->nodes() - 1;
-  }
-  
-  
-  
-  /** The abstract tree is interepreted.
-   * The subtree rooted in the current node is interpreted, according to
-   * a given abstract state and a given abstract domain.
-   * @param[in, out] S Abstract state in which operate
-   * @return         Modified abstract state
-   */
-  template <class T>
-  AbstractState<typename T::abstract_type> *
-  interpret(AbstractState<typename T::abstract_type> *S)
-  {
-    switch(this->type){
-      case ASN:
-        T::Assignment(this->subtrees[0]->literal,
-                      this->subtrees[1]->arithmetic_op<T>(S),
-                      S);
-        return S;
+    // Correct action is taken depending on the statement type.
+    switch(opcode.statement){
+      case Asn:
+        state.store(*(sons[0]->value.var), sons[1]->A(state));
+        return state;
       
-      case SKP:
-        T::Skip();
-        return S;
+      case Skp:
+        return state;
       
-      case CAT:
-        T::Cat(this->subtrees[0], this->subtrees[1], S);
-        return S;
+      case Seq:
+        return sons[1]->interpret(sons[0]->interpret(state));
       
-      case IF:
-        T::If(this->subtrees[0]->boolean_op<T>(S),
-              this->subtrees[1],
-              this->subtrees[2],
-              S);
-        return S;
+      case If:
+        return AbstractState<D>::lub(
+          sons[1]->interpret(sons[0]->B(state)),
+          sons[2]->interpret(sons[0]->neg().B(state))
+        );
       
-      case WHL:
-        T::While(this->subtrees[0],
-                 this->subtrees[1],
-                 S);
-        return S;
+      case Whl:
+        do{
+          s     = state;
+          state = sons[1]->interpret(sons[0]->B(state));
+          state = AbstractState<D>::lub(s, state);
+          state = AbstractState<D>::widening(s, state);
+        }
+        while(s != state);
+        state = sons[0]->neg().B(state);
+        return state;
       
-      case PRN:
-        T::Print(this->subtrees[0]->arithmetic_op<T>(S));
-        return S;
+      case Prn:
+        return state;
+      
+      case In:
+        state.store(*(sons[0]->value.var), D::top());
+        return state;
       
       default:
-        fprintf(stderr,
-          "[AST::interpret] Something really bad happened.\n");
-        return S;
+        cerr << "[AST::Interpret]: Unrecognized statement opcode value: "
+             << opcode.statement << "." << endl;
+        return state;
     }
   }
   
   
-  
-  /** The Arithmetic Expression is interepreted.
-   * The subtree corresponding to an arithmetic expression rooted in the
-   * current node is interpreted, according to a given abstract state
-   * and a given abstract domain. This typically correspond to some kind
-   * of evaluation.
-   * @param[in, out] S Abstract state in which operate
-   * @return         Abstract arithmetic evaluation
+  /** An arithmetic expression is evaluated in the given state.
+   * Abstract evaluation is parametric.
+   * @param[in]  state       Initial state
+   * @retval     T           Resulting abstract value
    */
-  template <class T>
-  typename T::abstract_type
-  arithmetic_op(AbstractState<typename T::abstract_type> *S)
+  template <typename T>
+  T A(AbstractState<T> state)
   {
-    switch(this->type){
-      case NUM:
-        return T::NumericValue(this->value);
+    // If node is not an arithmetic expression, just return an empty value.
+    if(type != AExp){ return T(); }
+    
+    // Correct action is taken depending on the type of operation.
+    switch(opcode.arithmetic){
+      case Num: return T::alpha(value.num);
+      case Var: return state.load(*(value.var));
+      case Id:  return +(sons[0]->A(state));
+      case Opp: return -(sons[0]->A(state));
+      case Sum: return sons[0]->A(state) + sons[1]->A(state);
+      case Sub: return sons[0]->A(state) - sons[1]->A(state);
+      case Mul: return sons[0]->A(state) * sons[1]->A(state);
+      case Div: return sons[0]->A(state) / sons[1]->A(state);
+      case Rem: return sons[0]->A(state) % sons[1]->A(state);
+      case Pow: return sons[0]->A(state) ^ sons[1]->A(state);
+      default:
+        cerr << "[AST::A]: Unrecognized arithmetic opcode value: "
+             << opcode.arithmetic << "." << endl;
+        return T();
+    }
+  }
+  
+  
+  /** Boolean expression is evaluated in the given state.
+   * Type of abstract evaluation is parametric.
+   * @param[in]  state       Initial state
+   * @retval     AbstractState The state itself if the evaluation was
+   *                         true, the bottom state otherwise
+   */
+  template <typename D>
+  AbstractState<D> B(AbstractState<D> state)
+  {
+    AbstractState<D> bottom, s;
+   
+    // If node is not a boolean expression, just return the current state.
+    if(type != BExp){ return state; }
+    
+    // Correct action is taken depending on the type of expression.
+    switch(opcode.boolean){
+      case Bool:
+        return (value.boolean) ? state : bottom;
       
-      case VAR:
-        return T::VariableValue(this->literal, S);
-       
-      case AOP: switch(this->a_op){
-        case SUM:
-          return T::Sum(this->subtrees[0]->arithmetic_op<T>(S),
-                        this->subtrees[1]->arithmetic_op<T>(S));
-        
-        case DIF:
-          return T::Dif(this->subtrees[0]->arithmetic_op<T>(S),
-                        this->subtrees[1]->arithmetic_op<T>(S));
-        
-        case MUL:
-          return T::Prod(this->subtrees[0]->arithmetic_op<T>(S),
-                         this->subtrees[1]->arithmetic_op<T>(S));
-        
-        case DIV:
-          return T::Div(this->subtrees[0]->arithmetic_op<T>(S),
-                        this->subtrees[1]->arithmetic_op<T>(S));
-        
-        case REM:
-          return T::Rem(this->subtrees[0]->arithmetic_op<T>(S),
-                        this->subtrees[1]->arithmetic_op<T>(S));
-        
-        case POW:
-          return T::Pow(this->subtrees[0]->arithmetic_op<T>(S),
-                        this->subtrees[1]->arithmetic_op<T>(S));
-        
-        default:
-          fprintf(stderr,
-            "[AST::arithmetic_op] Unrecognized arithmetic operation.\n");
-      }
-      break;
+      case Not:
+        return sons[0]->neg().B(state);
+      
+      case And:
+        return sons[1]->B(sons[0]->B(state));
+      
+      case Or:
+        return AbstractState<D>::lub(
+          sons[0]->B(state),
+          sons[1]->B(state)
+        );
+      
+      case Xor:
+        return AbstractState<D>::lub(
+          sons[0]->B(sons[1]->neg().B(state)),
+          sons[0]->neg().B(sons[1]->B(state))
+        );
+      
+      case Nand: case Nor:  case Xnor:
+        return (neg().B(state) == bottom)
+             ? state : bottom;
+      
+      case Lt:
+        return (sons[0]->A(state) < sons[1]->A(state))
+             ? state : bottom;
+      
+      case Leq:
+        return (sons[0]->A(state) <= sons[1]->A(state))
+             ? state : bottom;
+      
+      case Eq:
+        return (sons[0]->A(state) == sons[1]->A(state))
+             ? state : bottom;
+      
+      case Geq:
+        return (sons[0]->A(state) >= sons[1]->A(state))
+             ? state : bottom;
+      
+      case Gt:
+        return (sons[0]->A(state) > sons[1]->A(state))
+             ? state : bottom;
+      
+      case Neq:
+        return (sons[0]->A(state) != sons[1]->A(state))
+             ? state : bottom;
       
       default:
-        fprintf(stderr,
-          "[AST::arithmetic_op] Unrecognized arithmetic item\n.");
+        cerr << "[AST::B]: Unrecognized boolean opcode value: "
+             << opcode.boolean << "." << endl;
+        return state;
     }
-    return (typename T::abstract_type) 0;
   }
   
   
-  
-  /** The Boolean Expression is interepreted.
-   * The subtree corresponding to a boolean expression rooted in the
-   * current node is interpreted, according to a given abstract state
-   * and a given abstract domain. This typically correspond to some kind
-   * of evaluation.
-   * @param[in, out] S Abstract state in which operate
-   * @return         Abstract boolean evaluation
+  /** Concrete excecution is performed starting from the bottom state.
+   * @retval     AbstractState State containing the result of the
+   *                         (concrete) compupation
    */
-  template <class T>
-  typename T::abstract_bool
-  boolean_op(AbstractState<typename T::abstract_type> *S)
-  {
-    switch(this->type){
-      case BOOL:
-        return T::Bool(this->literal);
-      
-      case NOT:
-        return T::Not(this->subtrees[0]->boolean_op<T>(S));
-      
-      case BOP: switch(this->b_op){
-        case AND:
-          return T::And(this->subtrees[0]->boolean_op<T>(S),
-                        this->subtrees[1]->boolean_op<T>(S));
-        
-        case OR:
-          return T::Or(this->subtrees[0]->boolean_op<T>(S),
-                       this->subtrees[1]->boolean_op<T>(S));
-        
-        case XOR:
-          return T::Xor(this->subtrees[0]->boolean_op<T>(S),
-                        this->subtrees[1]->boolean_op<T>(S));
-        
-        case NAND:
-          return T::Nand(this->subtrees[0]->boolean_op<T>(S),
-                         this->subtrees[1]->boolean_op<T>(S));
-        
-        case NOR:
-          return T::Nor(this->subtrees[0]->boolean_op<T>(S),
-                        this->subtrees[1]->boolean_op<T>(S));
-        
-        case NXOR:
-          return T::Nxor(this->subtrees[0]->boolean_op<T>(S),
-                         this->subtrees[1]->boolean_op<T>(S));
-        
-        default:
-          fprintf(stderr,
-            "[AST::boolean_op] Unrecognized boolean operation.\n");
-      }
-      break;
-      
-      case CMP: switch(this->c_op){
-        case LT:
-          return T::Lt(this->subtrees[0]->arithmetic_op<T>(S),
-                       this->subtrees[1]->arithmetic_op<T>(S));
-        
-        case LEQ:
-          return T::Leq(this->subtrees[0]->arithmetic_op<T>(S),
-                        this->subtrees[1]->arithmetic_op<T>(S));
-        
-        case EQ:
-          return T::Eq(this->subtrees[0]->arithmetic_op<T>(S),
-                       this->subtrees[1]->arithmetic_op<T>(S));
-        
-        case GEQ:
-          return T::Geq(this->subtrees[0]->arithmetic_op<T>(S),
-                        this->subtrees[1]->arithmetic_op<T>(S));
-        
-        case GT:
-          return T::Gt(this->subtrees[0]->arithmetic_op<T>(S),
-                       this->subtrees[1]->arithmetic_op<T>(S));
-        
-        case NEQ:
-          return T::Neq(this->subtrees[0]->arithmetic_op<T>(S),
-                        this->subtrees[1]->arithmetic_op<T>(S));
-        
-        default:
-          fprintf(stderr,
-            "[AST::boolean_op] Unrecognized comparison.\n");
-      }
-      break;
-      
-      default:
-        fprintf(stderr,
-          "[AST::boolean_op] Unrecognized boolean item.\n");
-    }
-    
-    return (typename T::abstract_bool) true;
-  }
+  AbstractState<int> execute();
   
   
-  
-  /** The subtree is exported into a graphviz file.
-   * The subtree rooted in the current node is exported to a file at
-   * given location, which can later be processed with the graphviz tool
-   * in order to produce a visual representation of the tree.
-   * An user defined function is used to translate the abstract value of
-   * every node into a string to be displayed inside the node.
-   * @param[in]  filename    Name of the output file
+  /** Concrete excecution is performed starting from the given state.
+   * @param[in]  state       Initial state
+   * @retval     AbstractState State containing the result of the
+   *                         (concrete) compupation
    */
-  void export_graphviz(const char* filename)
-  {
-    char str[32];
-    unsigned int i;
-    unsigned int node_ID, edge_ID;
-    unsigned int nodes, edges;
-    ofstream output;
-    struct graph_node *node_list;
-    struct graph_edge *edge_list;
-    
-    
-    // Otput file is open.
-    output.open(filename, ios::out);
-    if(!output.is_open()){
-      fprintf(stderr, "[AST::export_graphviz]: Unable to open file.\n");
-      return;
-    }
-    
-    
-    // Graphviz header is prepared.
-    output 
-    << "/** Automatically generated by the static analyzer for graphviz.\n"
-    <<  " * Compile this file with `dot -Tpng -O " << filename << "`.\n"
-    <<  " * or any other options you like. See `man dot` for informations.\n"
-    <<  " */\n"
-    << "strict digraph AST{\n"
-    << "  splines = true;\n"
-    << "  layout  = dot;\n"
-    << "  bgcolor = \"#FFFFFF\";\n"
-    << "  \n"
-    << "  node [fontname=\"Times\", fontcolor=\"#333333\","
-    << " color=\"#333333\",\n        style=\"solid\"];\n"
-    << "  edge [fontname=\"Times\", fontcolor=\"#222222\","
-    << " color=\"#222222\",\n        arrowhead=\"open\"];\n"
-    << "  \n"
-    ;
-    
-    // Tree is scanned and the lists of nodes are created.
-    nodes = this->nodes();
-    node_list = (struct graph_node *) malloc(nodes * sizeof(struct graph_node));
-    node_ID = 0;
-    
-    edges = this->edges();
-    edge_list = (struct graph_edge *) malloc(edges * sizeof(struct graph_edge));
-    edge_ID = 0;
-    
-    this->to_list(node_list, edge_list, &node_ID, &edge_ID);
-    
-    // The output is written to the graphviz file.
-    output << "  /* Nodes. */\n";
-    for(i = 0; i < nodes; i++){
-      ((AST *) node_list[i].node)->to_string(str);
-      output << "  " << i << "[label=\"" << str << "\"];\n";
-    }
-    
-    output << "\n";
-    
-    output << "  /* Edges. */\n";
-    for(i = 0; i < edges; i++){
-      output << "  " << edge_list[i].tail->ID << " -> "
-             << edge_list[i].head->ID << ";\n";
-    }
-    
-    output << "}\n";
-    
-    // Output file is safely closed and memory is freed.
-    output.close();
-    free(node_list);
-    free(edge_list);
-  }
+  AbstractState<int> execute(AbstractState<int> state);
   
   
-  
-private:
-  node_type type;       /**< Type of the node. */
-  int value;            /**< Abstract value associated to the node. */
-  char literal[32];     /**< Literal associated to the node. */
-  a_opcode a_op;        /**< Arithmetic operator associated to the node. */
-  b_opcode b_op;        /**< Boolean operator associated to the node. */
-  c_opcode c_op;        /**< Comparison operator associated to the node. */
-  unsigned int sons;    /**< Number of sons of the node. */
-  AST *subtrees[3];     /**< Array containing every son of the node. */
-  
-  
-  /* Structures used by the built-in graphviz converter. */
-  /** Structure of a node. */
-  struct graph_node{
-    void *node;                /**< Pointer to the node. */
-    unsigned int ID;           /**< ID of the node. */
-  };
-  
-  /** Structure of an edge. */
-  struct graph_edge{
-    struct graph_node *head;   /**< Pointer to the head. */
-    struct graph_node *tail;   /**< Pointer to the tail. */
-  };
-  
-  
-  
-  /** The subtree is scanned and converted into lists of nodes and edges.
-   * The subtree rooted in the current node is explored (trough a
-   * depth-first visit). Such a visit builds two arrays, one containing
-   * the couples (pointer-to-node; numeric-ID) representing the nodes,
-   * the other containing the couples (pointer-to-head; pointer-to-tail)
-   * representing the edges.
-   * @param[in, out] node_list List of nodes visited so far
-   * @param[in, out] edge_list List of edges visited so far
-   * @param[in, out] node_ID   Next ID to be assigned to a node
-   * @param[in, out] edge_ID   Next ID to be assigned to an edge
-   * @return     ID of the last visited node
+  /** An arithmetic expression is evaluated in the given state.
+   * Evaluation is performed on the concrete values.
+   * @param[in]  state       Concrete state where expression is
+   *                         evaluated
+   * @retval     int         Evaluated arithmetic expression
    */
-  unsigned int to_list(
-    struct graph_node node_list[], struct graph_edge edge_list[],
-    unsigned int *node_ID, unsigned int *edge_ID
-  )
-  {
-    unsigned int ID, son, i;
-    struct graph_node node;
-    struct graph_edge edge;
-    
-    ID = *node_ID;
-    node.node = this;
-    node.ID   = ID;
-    node_list[ID] = node;
-    *node_ID = ID + 1;
-    
-    for(i = 0; i < this->sons; i++){
-      son = this->subtrees[i]->to_list(node_list, edge_list, node_ID, edge_ID);
-      edge.head = &node_list[son];
-      edge.tail = &node_list[ID];
-      edge_list[*edge_ID] = edge;
-      *edge_ID = *edge_ID + 1;
-    }
-    
-    return ID;
-  }
+  int A(AbstractState<int> state);
   
   
-  
-  /** The current node is "translated" to a string.
-   * The content of the current node is print into a previously 
-   * allocated buffer. The content of the string depends on the type of
-   * the node.
-   * @param[out] buffer      Buffer where the string will be written
+  /** Boolean expression is evaluated in the given state.
+   * Evaluation is perfomed on the concrete values.
+   * @param[in]  state       Initial state
+   * @retval     bool        True if and only if the boolean expression
+   *                         evaluates to true
    */
-  void to_string(char *buffer)
-  {
-    switch(this->type){
-      case ASN:  sprintf(buffer, ":=");                      break;
-      case SKP:  sprintf(buffer, "skip");                    break;
-      case CAT:  sprintf(buffer, ";");                       break;
-      case IF:   sprintf(buffer, "if-then-else");            break;
-      case WHL:  sprintf(buffer, "while");                   break;
-      case NUM:  sprintf(buffer, "Num\\n%d", this->value);   break;
-      case VAR:  sprintf(buffer, "Var\\n%s", this->literal); break;
-      case AOP:  switch(this->a_op){
-                   case SUM: sprintf(buffer, "AOp\\n+");  break;
-                   case DIF: sprintf(buffer, "AOp\\n-");  break;
-                   case MUL: sprintf(buffer, "AOp\\n*");  break;
-                   case DIV: sprintf(buffer, "AOp\\n/");  break;
-                   case REM: sprintf(buffer, "AOp\\n%%"); break;
-                   case POW: sprintf(buffer, "AOp\\n^");  break;
-                   default:  sprintf(buffer, "Unknown\\nAOp"); break;
-                 } break;
-      case BOOL: sprintf(buffer, "%s", this->literal);       break;
-      case NOT:  sprintf(buffer, "not");                     break;
-      case BOP:  switch(this->b_op){
-                   case AND:  sprintf(buffer, "BOp\\nand");  break;
-                   case OR:   sprintf(buffer, "BOp\\nor");   break;
-                   case XOR:  sprintf(buffer, "BOp\\nxor");  break;
-                   case NAND: sprintf(buffer, "BOp\\nnand"); break;
-                   case NOR:  sprintf(buffer, "BOp\\nnor");  break;
-                   case NXOR: sprintf(buffer, "BOp\\nnxor"); break;
-                   default:   sprintf(buffer, "Unknown\\nBOp"); break;
-                 } break;
-      case CMP:  switch(this->c_op){
-                   case LT:  sprintf(buffer, "cmp\\n<");  break;
-                   case LEQ: sprintf(buffer, "cmp\\n<="); break;
-                   case EQ:  sprintf(buffer, "cmp\\n=");  break;
-                   case GEQ: sprintf(buffer, "cmp\\n>="); break;
-                   case GT:  sprintf(buffer, "cmp\\n>");  break;
-                   case NEQ: sprintf(buffer, "cmp\\n<>"); break;
-                   default:  sprintf(buffer, "Unkown\\ncmp"); break;
-                 } break;
-      case PRN:  sprintf(buffer, "print");                   break;
-      default:   sprintf(buffer, "unkown\\nsyntax");         break;
-    }
-  }
+  bool B(AbstractState<int>);
+  
+  
+  private:
+  /** Type of an abstract syntax node. */
+  typedef enum{
+    Stm,                ///< Statement node
+    AExp,               ///< Arithmetic expression node
+    BExp                ///< Boolean expression node
+  } nodeType;
+  
+  /** Type representing a value associated to the node. */
+  typedef union{
+    int  num;           ///< Constant, integer value
+    string *var;        ///< Name of a variable
+    bool boolean;       ///< Constant, boolean value
+  } valueType;
+  
+  /** Type representing the opcode of the node. */
+  typedef union{
+    StmType    statement;    ///< Node is a statement
+    AExpType   arithmetic;   ///< Node is an arithmetic expression
+    BExpType   boolean;      ///< Node is a boolean expression
+  } opcodeType;
+  
+  
+  static unsigned int lastID;  ///< Last assigned nodeID
+  unsigned int nodeID;  ///< ID of the node
+  nodeType     type;    ///< Type of the node
+  AST *        parent;  ///< Pointer to parent node
+  vector<AST*> sons;    ///< List of sons
+  valueType    value;   ///< Value associated to the node, if any
+  opcodeType   opcode;  ///< Opcode of the node
+  
+  
+  /** Boolean expression is negated.
+   * Boolean expression associated to the current node is reversed and
+   * returned into a new sub-tree.
+   * For instance, if current node contains a 'less than' comparison
+   * between arithmetic expressions a1 and a2, a new sub-tree is created,
+   * whose root is a node representing a 'greater than or equal to'
+   * comparison between a1 and a2.
+   * @retval     AST         Negated boolean expression
+   */
+  AST neg();
 };
-
 #endif
-
