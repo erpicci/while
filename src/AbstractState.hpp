@@ -5,8 +5,8 @@
  * @file AbstractState.hpp
  * @author Marco Zanella <marco.zanella.9@studenti.unipd.it>
  */
-#ifndef _ABSTRACT_STATE_HPP_
-#define _ABSTRACT_STATE_HPP_
+#ifndef ABSTRACT_STATE_HPP
+#define ABSTRACT_STATE_HPP
 
 #include <iostream>
 #include <string>
@@ -116,9 +116,12 @@ class AbstractState
     lub.state = s1.state;
     for(it = s2.state.begin(); it != s2.state.end(); ++it){
       var = it->first;
-      lub.state[var] = (lub.state.find(var) == lub.state.end())
-                     ? it->second
-                     : T::lub(s1.state[var], it->second);
+      if(lub.state.find(var) == lub.state.end()){
+        lub.state[var] = it->second; 
+      }
+      else{
+        lub.state[var] =  T::lub(s1.state[var], it->second);
+      }
     }
     return lub;
   }
