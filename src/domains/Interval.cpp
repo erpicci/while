@@ -20,7 +20,7 @@
  */
 bool Interval::operator< (Interval other)
 {
-  return (lBound >= other.rBound) ? false : true;
+  return (lBound < other.rBound) && !bottom;
 }
 
 
@@ -31,7 +31,7 @@ bool Interval::operator< (Interval other)
  */
 bool Interval::operator<=(Interval other)
 {
-  return (lBound > other.rBound) ? false : true;
+  return (lBound <= other.rBound) && !bottom;
 }
 
 
@@ -42,8 +42,7 @@ bool Interval::operator<=(Interval other)
  */
 bool Interval::operator==(Interval other)
 {
-  return (lBound > other.rBound || rBound < other.lBound)
-       ? false : true;
+  return (lBound <= other.rBound && rBound >= other.lBound) && !bottom;
 }
 
 
@@ -54,7 +53,7 @@ bool Interval::operator==(Interval other)
  */
 bool Interval::operator>=(Interval other)
 {
-  return (rBound < other.lBound) ? false : true;
+  return (rBound >= other.lBound) && !bottom;
 }
 
 
@@ -65,7 +64,7 @@ bool Interval::operator>=(Interval other)
  */
 bool Interval::operator> (Interval other)
 {
-  return (rBound <= other.lBound) ? false : true;
+  return (rBound > other.lBound) && !bottom;
 }
 
 
@@ -76,8 +75,8 @@ bool Interval::operator> (Interval other)
  */
 bool Interval::operator!=(Interval other)
 {
-  return (lBound == rBound && lBound == other.lBound &&
-          other.lBound == other.rBound) ? false : true;
+  return (lBound != rBound || lBound != other.lBound ||
+          other.lBound != other.rBound) && !bottom;
 }
 
 
@@ -99,6 +98,7 @@ Interval Interval::operator-()
   
   opp.lBound = -rBound;
   opp.rBound = -lBound;
+  opp.bottom = bottom;
   
   return opp;
 }
@@ -114,6 +114,7 @@ Interval Interval::operator+(Interval other)
   
   sum.lBound = lBound + other.lBound;
   sum.rBound = rBound + other.rBound;
+  sum.bottom = bottom || other.bottom ;
   
   return sum;
 }
@@ -130,6 +131,7 @@ Interval Interval::operator-(Interval other)
   
   sub.lBound = lBound - other.rBound;
   sub.rBound = rBound - other.lBound;
+  sub.bottom = bottom || other.bottom;
   
   return sub;
 }
@@ -146,6 +148,7 @@ Interval Interval::operator*(Interval other)
   
   mul.lBound = lBound * other.lBound;
   mul.rBound = rBound * other.rBound;
+  mul.bottom = bottom || other.bottom;
   if(mul.lBound > mul.rBound){
     tmp = mul.lBound;
     mul.lBound = mul.rBound;
@@ -165,6 +168,15 @@ Interval Interval::operator/(Interval other)
 {
   long tmp;
   Interval div;
+  
+  div.bottom = bottom || other.bottom;
+  if(other.rBound == 0 && other.lBound == 0){
+    div.bottom = true;
+    return div;
+  }
+  else if(other.rBound == 0 || other.lBound == 0){
+    return top();
+  }
   
   div.lBound = lBound / other.rBound;
   div.rBound = rBound / other.lBound;
@@ -186,6 +198,15 @@ Interval Interval::operator/(Interval other)
 Interval Interval::operator%(Interval other)
 {
   Interval rem;
+  
+  rem.bottom = bottom || other.bottom;
+  if(other.rBound == 0 && other.lBound == 0){
+    rem.bottom = true;
+    return rem;
+  }
+  else if(other.rBound == 0 || other.lBound == 0){
+    return top();
+  }
   
   if(other.lBound > 0){
     rem.lBound = 0L;
@@ -214,6 +235,7 @@ Interval Interval::operator^(Interval other)
   long i;
   Interval pow;
   
+  pow.bottom = bottom || other.bottom;
   pow.lBound = 1L;
   for(i = 0; i < other.lBound; ++i){
     pow.lBound *= (long) lBound;
@@ -246,10 +268,12 @@ Interval::operator const char * ()
   sprintf(left,  "%ld", lBound);
   sprintf(right, "%ld", rBound);
   
+  if(bottom){ return "bot"; }
+  
   string a =
-    (lBound == numeric_limits<int>::min() ? "(-inf" : (string("[") + left))
+    (lBound<=numeric_limits<short>::min() ? "(-inf" : (string("[") + left))
   + string("; ")
-  + (rBound == numeric_limits<int>::max() ? "+inf)" : (right + string("]")))
+  + (rBound>=numeric_limits<short>::max() ? "+inf)" : (right + string("]")))
   ;
   
   return a.c_str();
@@ -264,7 +288,8 @@ Interval::operator const char * ()
  */
 bool Interval::equal(Interval a, Interval b)
 {
-  return (a.lBound == b.lBound && a.rBound == b.rBound);
+  return (a.lBound == b.lBound && a.rBound == b.rBound)
+      &&  a.bottom == b.bottom;
 }
 
 
@@ -278,8 +303,13 @@ Interval Interval::lub(Interval a, Interval b)
 {
   Interval lub;
   
-  lub.lBound = (a.lBound < b.lBound) ? a.lBound : b.lBound;
-  lub.rBound = (a.rBound > b.rBound) ? a.rBound : b.rBound;
+  if(a.bottom) lub = b;
+  if(b.bottom) lub = a;
+  if(!a.bottom && !b.bottom){
+    lub.lBound = (a.lBound < b.lBound) ? a.lBound : b.lBound;
+    lub.rBound = (a.rBound > b.rBound) ? a.rBound : b.rBound;
+    lub.bottom = false;
+  }
   
   return lub;
 }
@@ -295,11 +325,12 @@ Interval Interval::nabla(Interval a, Interval b)
   Interval widened;
   
   widened.lBound = (b.lBound < a.lBound)
-                 ? numeric_limits<int>::min()
+                 ? numeric_limits<short>::min()
                  : b.lBound;
   widened.rBound = (b.rBound > a.rBound)
-                 ? numeric_limits<int>::max()
+                 ? numeric_limits<short>::max()
                  : b.rBound;
+  widened.bottom = b.bottom;
   
   return widened;
 }
@@ -317,6 +348,7 @@ Interval Interval::alpha(int value)
   
   a.lBound = (long) value;
   a.rBound = (long) value;
+  a.bottom = false;
   
   return a;
 }
@@ -348,8 +380,9 @@ Interval Interval::top()
 {
   Interval top;
   
-  top.lBound = (long) numeric_limits<int>::min();
-  top.rBound = (long) numeric_limits<int>::max();
+  top.lBound = (long) numeric_limits<short>::min();
+  top.rBound = (long) numeric_limits<short>::max();
+  top.bottom = false;
   
   return top;
 }

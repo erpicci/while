@@ -57,7 +57,6 @@ void init(int argc, char *argv[]);
 int main(int argc, char *argv[])
 {
   AST *P;
-  AbstractState<int> concreteState;
   
   // Parse options.
   init(argc, argv);
@@ -75,28 +74,29 @@ int main(int argc, char *argv[])
   }
   
   // Concrete execution.
-  concreteState = P->execute();
-  concreteState.dump();
+  //AbstractState<int> concreteState = P->execute();
+  //cout << "Concrete domain:   ";
+  //concreteState.dump();
   
   // Abstract executions.
-  cout << "Sign domain: ";
   AbstractState<Sign> signS = P->interpret<Sign>();
+  cout << "Sign domain:       ";
   signS.dump();
   
-  cout << "Interval domain: ";
   AbstractState<Interval> intervalS = P->interpret<Interval>();
+  cout << "Interval domain:   ";
   intervalS.dump();
   
-  cout << "Symmetric interval domain: ";
   AbstractState<SInterval> sintervalS = P->interpret<SInterval>();
+  cout << "S-Interval domain: ";
   sintervalS.dump();
 
-  cout << "Modulo 2 domain: ";
   AbstractState< Modulo<2> > modulo2S = P->interpret< Modulo<2> >();
+  cout << "Modulo 2 domain:   ";
   modulo2S.dump();
   
-  cout << "Modulo 3 domain: ";
   AbstractState< Modulo<3> > modulo3S = P->interpret< Modulo<3> >();
+  cout << "Modulo 3 domain:   ";
   modulo3S.dump();
   
   delete P;

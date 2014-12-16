@@ -20,8 +20,7 @@
  */
 bool SInterval::operator< (SInterval other)
 {
-  return (center - offset >= other.center + other.offset)
-       ? false : true;
+  return (center - offset < other.center + other.offset) && !bottom;
 }
 
 
@@ -32,8 +31,7 @@ bool SInterval::operator< (SInterval other)
  */
 bool SInterval::operator<=(SInterval other)
 {
-  return (center - offset > other.center + other.offset)
-       ? false : true;
+  return (center - offset >= other.center + other.offset) && !bottom;
 }
 
 
@@ -44,9 +42,9 @@ bool SInterval::operator<=(SInterval other)
  */
 bool SInterval::operator==(SInterval other)
 {
-  return (center - offset > other.center + other.offset
-      ||  center + offset < other.center - other.offset)
-       ? false : true;
+  return (center - offset <= other.center + other.offset
+      &&  center + offset >= other.center - other.offset)
+      && !bottom;
 }
 
 
@@ -57,8 +55,7 @@ bool SInterval::operator==(SInterval other)
  */
 bool SInterval::operator>=(SInterval other)
 {
-  return (center + offset < other.center - other.offset)
-       ? false : true;
+  return (center + offset >= other.center - other.offset) && !bottom;
 }
 
 
@@ -69,8 +66,7 @@ bool SInterval::operator>=(SInterval other)
  */
 bool SInterval::operator> (SInterval other)
 {
-  return (center + offset <= other.center - other.offset)
-       ? false : true;
+  return (center + offset > other.center - other.offset) && !bottom;
 }
 
 
@@ -81,8 +77,8 @@ bool SInterval::operator> (SInterval other)
  */
 bool SInterval::operator!=(SInterval other)
 {
-  return (center == other.center && offset == other.offset && offset == 0)
-       ? false : true;
+  return (center != other.center || offset != other.offset || offset == 0)
+      && !bottom;
 }
 
 
@@ -104,6 +100,7 @@ SInterval SInterval::operator-()
   
   opp.center = -center;
   opp.offset = offset;
+  opp.bottom = bottom;
   
   return opp;
 }
@@ -119,6 +116,7 @@ SInterval SInterval::operator+(SInterval other)
   
   sum.center = center + other.center;
   sum.offset = offset + other.offset;
+  sum.bottom = bottom || other.bottom;
   
   return sum;
 }
@@ -138,6 +136,7 @@ SInterval SInterval::operator-(SInterval other)
   if(sub.offset < 0){
     sub.offset = -sub.offset;
   }
+  sub.bottom = bottom || other.bottom;
   
   return sub;
 }
@@ -153,6 +152,7 @@ SInterval SInterval::operator*(SInterval other)
   
   mul.center = center * other.center;
   mul.offset = offset * other.offset;
+  mul.bottom = bottom || other.bottom;
   
   return mul;
 }
@@ -167,8 +167,17 @@ SInterval SInterval::operator/(SInterval other)
 {
   SInterval div;
   
-  div.center = center / other.center;
-  div.offset = offset / other.offset;
+  if(other.center == 0 && other.offset == 0){
+    div.bottom = true;
+  }
+  else if(other.center == 0 || other.offset == 0){
+    div = top();
+  }
+  else{
+    div.center = center / other.center;
+    div.offset = offset / other.offset;
+    div.bottom = bottom || other.bottom;
+  }
   
   return div;
 }
@@ -184,8 +193,12 @@ SInterval SInterval::operator%(SInterval other)
 {
   SInterval rem;
   
-  (void) other;
-  rem = top();
+  if(other.center == 0 && other.offset == 0){
+    rem.bottom = true;
+  }
+  else{
+    rem = top();
+  }
   
   return rem;
 }
@@ -201,8 +214,8 @@ SInterval SInterval::operator^(SInterval other)
 {
   SInterval pow;
   
-  (void) other;
   pow = top();
+  pow.bottom = bottom || other.bottom;
   
   return pow;
 }
@@ -220,8 +233,10 @@ SInterval::operator const char * ()
   sprintf(c,  "%ld", center);
   sprintf(off, "%ld", offset);
   
+  if(bottom) return "bot";
+  
   string a = c + string(" ±")
-  + (offset == numeric_limits<int>::max() ? "inf" : off)
+  + (offset == numeric_limits<short>::max() ? "inf" : off)
   ;
   
   return a.c_str();
@@ -236,7 +251,8 @@ SInterval::operator const char * ()
  */
 bool SInterval::equal(SInterval a, SInterval b)
 {
-  return (a.center == b.center && a.offset == b.offset);
+  return a.center == b.center && a.offset == b.offset
+      && a.bottom == b.bottom;
 }
 
 
@@ -250,10 +266,15 @@ SInterval SInterval::lub(SInterval a, SInterval b)
 {
   SInterval lub;
   
-  lub.center = (a.center + b.center) / 2;
-  lub.offset = (a.center > b.center
-                ? a.center - lub.center : b.center - lub.center)
-             + (a.offset > b.offset ? a.offset : b.offset);
+  if(a.bottom) lub = b;
+  else if(b.bottom) lub = a;
+  else{
+    lub.center = (a.center + b.center) / 2;
+    lub.offset = (a.center > b.center
+                  ? a.center - lub.center : b.center - lub.center)
+               + (a.offset > b.offset ? a.offset : b.offset);
+    lub.bottom = false;
+  }
   
   return lub;
 }
@@ -270,8 +291,9 @@ SInterval SInterval::nabla(SInterval a, SInterval b)
   
   widened.center = b.center;
   widened.offset = (b.offset > a.offset && b.center >= a.center)
-                 ? numeric_limits<int>::max()
+                 ? numeric_limits<short>::max()
                  : b.offset;
+  widened.bottom = b.bottom;
   
   return widened;
 }
@@ -289,6 +311,7 @@ SInterval SInterval::alpha(int value)
   
   a.center = (long) value;
   a.offset = 0L;
+  a.bottom = false;
   
   return a;
 }
@@ -321,7 +344,8 @@ SInterval SInterval::top()
   SInterval top;
   
   top.center = 0L;
-  top.offset = numeric_limits<int>::max();
+  top.offset = numeric_limits<short>::max();
+  top.bottom = false;
   
   return top;
 }

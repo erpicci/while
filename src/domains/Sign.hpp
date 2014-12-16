@@ -11,7 +11,6 @@
 
 #include <string>
 #include <vector>
-#include "AbstractDomain.hpp"
 
 using namespace std;
 

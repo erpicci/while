@@ -190,5 +190,6 @@ class SInterval
   private:
   long center;          ///< Central point of the symmetric interval
   long offset;          ///< Offset
+  bool bottom;          ///< True if the value is bottom
 };
 #endif

@@ -186,6 +186,7 @@ class Interval
   
   
   private:
+  bool bottom;          ///< True if the value is bottom
   long lBound;          ///< Left bound of the interval
   long rBound;          ///< Right bound of the interval
 };
