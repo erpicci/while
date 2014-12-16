@@ -20,10 +20,10 @@ using namespace std;
 
 
 // Global variables.
-string source_path;     ///< Path of the source file, if any
-bool export_ast;        ///< True if a dot file representing the
-                        //<  Abstract Syntax Tree shall be created
-string ast_path;        ///< Path to the output ast dot file
+string source_path = "-";         ///< Path of the source file, if any
+bool export_ast    = false;       ///< True if a dot file representing the
+                                  ///<  Abstract Syntax Tree shall be created
+string ast_path    = "ast.dot";   ///< Path to the output ast dot file
 
 
 
@@ -79,11 +79,25 @@ int main(int argc, char *argv[])
   concreteState.dump();
   
   // Abstract executions.
+  cout << "Sign domain: ";
   AbstractState<Sign> signS = P->interpret<Sign>();
   signS.dump();
   
+  cout << "Interval domain: ";
   AbstractState<Interval> intervalS = P->interpret<Interval>();
   intervalS.dump();
+  
+  cout << "Symmetric interval domain: ";
+  AbstractState<SInterval> sintervalS = P->interpret<SInterval>();
+  sintervalS.dump();
+
+  cout << "Modulo 2 domain: ";
+  AbstractState< Modulo<2> > modulo2S = P->interpret< Modulo<2> >();
+  modulo2S.dump();
+  
+  cout << "Modulo 3 domain: ";
+  AbstractState< Modulo<3> > modulo3S = P->interpret< Modulo<3> >();
+  modulo3S.dump();
   
   delete P;
   
@@ -100,11 +114,6 @@ void init(int argc, char *argv[])
 {
   int i;
   
-  // Global variables are initialized with their standard values.
-  source_path = "-";
-  export_ast  = false;
-  ast_path    = "./ast.dot";
-  
   for(i = 1; i < argc; i++){
     // AST export is requested.
     if((strcmp("--ast", argv[i]) == 0 || strcmp("-a", argv[i]) == 0)
@@ -115,18 +124,19 @@ void init(int argc, char *argv[])
     
     // Helper.
     else if(strcmp("--help", argv[i]) == 0 || strcmp("-h", argv[i]) == 0){
-      cout << "While Interpreter\n"
-           << "----------------------------------\n"
-           << "Usage: while [options] [file]\n\n"
-           << "List of options:\n"
-           << "  -a, --ast FILE        Abstract Syntax Tree of the program is exported in dot format to FILE\n"
-           << "  -h, --help            Print this help and exit\n"
-           << "\n"
-           << "File:\n"
-           << "  filename              Path to the program file (typically .wl)\n"
-           << "  -                     Program is read from standard input\n"
-           << "  (nothing)             Program is read from standard input\n"
-            ;
+      cout
+      << "While Interpreter\n"
+      << "----------------------------------\n"
+      << "Usage: while [options] [file]\n\n"
+      << "List of options:\n"
+      << "  -a, --ast FILE   AST is exported in dot format to FILE\n"
+      << "  -h, --help       Print this help and exit\n"
+      << endl
+      << "File:\n"
+      << "  filename         Path to the program file (typically .wl)\n"
+      << "  -                Program is read from standard input\n"
+      << "  (nothing)        Program is read from standard input\n"
+      ;
       exit(0);
     }
     

@@ -5,8 +5,8 @@
  * @file AST.hpp
  * @author Marco Zanella <marco.zanella.9@studenti.unipd.it>
  */
-#ifndef _AST_HPP_
-#define _AST_HPP_
+#ifndef AST_HPP
+#define AST_HPP
 
 #include <vector>
 #include <string>

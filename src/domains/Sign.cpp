@@ -197,9 +197,9 @@ Sign Sign::operator/(Sign other)
   Sign div;
   signType table[] = {
     BOT,   BOT,   BOT,   BOT,   BOT,
-    BOT,   PLUS,  BOT,   MINUS, TOP,
+    BOT,   TOP,   BOT,   TOP,   TOP,
     BOT,   ZERO,  BOT,   ZERO,  ZERO,
-    BOT,   MINUS, BOT,   PLUS,  TOP,
+    BOT,   TOP,   BOT,   TOP,   TOP,
     BOT,   TOP,   BOT,   TOP,   TOP
   };
   

@@ -18,6 +18,7 @@ DOC   = ../doc
 # Dependencies.
 all: while
 while: domains/BlackHole.o domains/Sign.o domains/Interval.o \
+       domains/SInterval.o \
        parser/parser.o scanner/scanner.o AST.o main.o
 parser/parser.cpp: parser/grammar.y
 scanner/scanner.cpp: scanner/scanner.l

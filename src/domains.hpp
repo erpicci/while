@@ -5,11 +5,13 @@
  * @defgroup domains Abstract Domains
  * Every abstract domain falls within this group.
  */
-#ifndef _DOMAINS_HPP_
-#define _DOMAINS_HPP_
+#ifndef DOMAINS_HPP
+#define DOMAINS_HPP
 
 #include "domains/BlackHole.hpp"
 #include "domains/Sign.hpp"
 #include "domains/Interval.hpp"
+#include "domains/SInterval.hpp"
+#include "domains/Modulo.hpp"
 
 #endif
