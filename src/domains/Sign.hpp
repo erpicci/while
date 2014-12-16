@@ -11,6 +11,7 @@
 
 #include <string>
 #include <vector>
+#include "AbstractDomain.hpp"
 
 using namespace std;
 
@@ -27,7 +28,7 @@ class Sign
    * @retval     bool        False if left-operand is for sure not
    *                         smaller than the second one
    */
-  bool operator< (Sign& other);
+  bool operator< (Sign other);
   
   
   /** 'Less than or equal to' operator overloading.
@@ -35,7 +36,7 @@ class Sign
    * @retval     bool        False if left-operand is for sure not
    *                         smaller than or equal to the second one
    */
-  bool operator<=(Sign& other);
+  bool operator<=(Sign other);
   
   
   /** 'Equal to' operator overloading.
@@ -43,7 +44,7 @@ class Sign
    * @retval     bool        False if left-operand is for sure not equal
    *                         to the second one
    */
-  bool operator==(Sign& other);
+  bool operator==(Sign other);
   
   
   /** 'Greater than or equal to' operator overloading.
@@ -51,7 +52,7 @@ class Sign
    * @retval     bool        False if left-operand is for sure greater
    *                         than or equal to the second one
    */
-  bool operator>=(Sign& other);
+  bool operator>=(Sign other);
 
 
   /** 'Greater' operator overloading.
@@ -59,7 +60,7 @@ class Sign
    * @retval     bool        False if left-operand is for sure greater
    *                         than the second one
    */
-  bool operator> (Sign& other);
+  bool operator> (Sign other);
   
   
   /** 'Not equal to' operator overloading.
@@ -67,7 +68,7 @@ class Sign
    * @retval     bool        False if left-operand is for sure not equal
    *                         to the second one
    */
-  bool operator!=(Sign& other);
+  bool operator!=(Sign other);
   
   
   /** Identity operator overloading.

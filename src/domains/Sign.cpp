@@ -14,7 +14,7 @@
  * @retval     bool        False if left-operand is for sure not smaller
  *                         than the second one
  */
-bool Sign::operator< (Sign& other)
+bool Sign::operator< (Sign other)
 {
   bool table[] = {
     false, false, false, false, false,
@@ -33,7 +33,7 @@ bool Sign::operator< (Sign& other)
  * @retval     bool        False if left-operand is for sure not smaller
  *                         than or equal to the second one
  */
-bool Sign::operator<=(Sign& other)
+bool Sign::operator<=(Sign other)
 {
   bool table[] = {
     false, false, false, false, false,
@@ -52,7 +52,7 @@ bool Sign::operator<=(Sign& other)
  * @retval     bool        False if left-operand is for sure not equal
  *                         to the second one
  */
-bool Sign::operator==(Sign& other)
+bool Sign::operator==(Sign other)
 {
   bool table[] = {
     false, false, false, false, false,
@@ -71,7 +71,7 @@ bool Sign::operator==(Sign& other)
  * @retval     bool        False if left-operand is for sure greater
  *                         than or equal to the second one
  */
-bool Sign::operator>=(Sign& other)
+bool Sign::operator>=(Sign other)
 {
   return other <= *this;
 }
@@ -82,7 +82,7 @@ bool Sign::operator>=(Sign& other)
  * @retval     bool        False if left-operand is for sure greater
  *                         than the second one
  */
-bool Sign::operator> (Sign& other)
+bool Sign::operator> (Sign other)
 {
   return other < *this;
 }
@@ -93,7 +93,7 @@ bool Sign::operator> (Sign& other)
  * @retval     bool        False if left-operand is for sure not equal
  *                         to the second one
  */
-bool Sign::operator!=(Sign& other)
+bool Sign::operator!=(Sign other)
 {
   return !(value == BOT || other.value == BOT ||
           (value == ZERO && other.value == ZERO));
